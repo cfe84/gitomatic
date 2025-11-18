@@ -18,7 +18,7 @@ echo "Starting pipeline at `date` $PWD"
 SECONDS=0
 
 TMP_FOLDER=`mktemp -d`
-#trap "echo -e \"\n===== Cleaning up temp folder ===== \n\";rm -rf $TMP_FOLDER/*" EXIT
+trap "echo -e \"\n===== Cleaning up temp folder ===== \n\";rm -rf $TMP_FOLDER/*" EXIT
 ARTIFACTS_FOLDER="$TMP_FOLDER/artifacts"
 CLONE_FOLDER="$TMP_FOLDER/src"
 PIPELINE_DEFINITION="$TMP_FOLDER/src/.build/pipeline.ini"

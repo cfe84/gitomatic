@@ -1,0 +1,9 @@
+#!/bin/bash
+
+while read oldrev newrev refname; do
+	repo=`pwd`
+	event="$repo|$refname"
+	eventId="`basename $repo`-`date +%s`"
+	echo "$repo|$refname" > /events/$eventId
+	echo "Gitaumation event triggered for $repo/$refname. Event id: $eventId"
+done

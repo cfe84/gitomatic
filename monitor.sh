@@ -21,8 +21,8 @@ while true; do
         echo "Processing event file: $event_file"
         IFS=':' read -r FOLDER HEAD < $event_file
         LOG_FILE="$EVENTS_DIR/logs/$(basename "$event_file").log"
-        echo "Searching $REPO_ROOT/$FOLDER"
-        bash run-pipeline.sh "$REPO_ROOT/$FOLDER" "$HEAD" # > "$LOG_FILE" 2>&1
+        echo "Repo $REPO_ROOT/$FOLDER - Revision $HEAD" > "$LOG_FILE"
+        bash run-pipeline.sh "$REPO_ROOT/$FOLDER" "$HEAD" >> "$LOG_FILE" 2>&1
         rm -f "$event_file"
     done
 done
