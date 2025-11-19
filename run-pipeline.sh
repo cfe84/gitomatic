@@ -22,6 +22,8 @@ trap "echo -e \"\n===== Cleaning up temp folder ===== \n\";rm -rf $TMP_FOLDER/*"
 ARTIFACTS_FOLDER="$TMP_FOLDER/artifacts"
 CLONE_FOLDER="$TMP_FOLDER/src"
 PIPELINE_DEFINITION="$TMP_FOLDER/src/.build/pipeline.ini"
+SRC_ENV_FILE="$REPO/build/env"
+ENV_FILE="$TMP_FOLDER/env"
 
 mkdir -p "$ARTIFACTS_FOLDER"
 
@@ -30,6 +32,11 @@ git clone --revision "$HEAD" "file://$REPO" "$CLONE_FOLDER"
 
 echo -e "\n===== Loading build definition =====\n"
 source "$WD/parse-ini.sh" "$PIPELINE_DEFINITION"
+
+if [ -f "$SRC_ENV_FILE" ]; then
+    echo -e "\n===== Copying environment file =====\n"
+    cp "$SRC_ENV_FILE" "$ENV_FILE"
+fi
 
 STEP=1
 
@@ -47,13 +54,17 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
 
 	COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" "
 
-  IFS=';' read -ra pairs <<< "$ARTIFACTS"
-  for pair in "${pairs[@]}"; do
-    IFS=':' read -r NAME MOUNTING_POINT <<< "$pair"
+    IFS=';' read -ra pairs <<< "$ARTIFACTS"
+    for pair in "${pairs[@]}"; do
+        IFS=':' read -r NAME MOUNTING_POINT <<< "$pair"
 		ART_FOLDER="$ARTIFACTS_FOLDER/$NAME"
 		mkdir -p "$ART_FOLDER"
-    COMMAND="$COMMAND -v \"$ART_FOLDER:$MOUNTING_POINT\""
-  done
+        COMMAND="$COMMAND -v \"$ART_FOLDER:$MOUNTING_POINT\""
+    done
+
+    if [ -f "$ENV_FILE" ]; then
+        COMMAND="$COMMAND --env-file \"$ENV_FILE\""
+    fi
 
 	COMMAND="$COMMAND \"$IMAGE\" \"$SCRIPT\""
 	echo $COMMAND
