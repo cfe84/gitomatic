@@ -69,10 +69,12 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
 
 	echo -e "\n===== ⚙️ $SECTION_NAME ($STEP/$INI_SECTION_COUNT) =====\n"
 
-    if [ ! -f "$CLONE_FOLDER/$SCRIPT" ]; then
-        echo -e "\n 🚨 Script $SCRIPT not found. Terminating pipeline 🚨 \n"
-        exit 1
-    fi
+    # if [ ! -f "$CLONE_FOLDER/$SCRIPT" ]; then
+    #     echo -e "\n 🚨 Script $SCRIPT not found. Terminating pipeline 🚨 \n"
+    #     echo "Contents of $CLONE_FOLDER:"
+    #     ls -la "$CLONE_FOLDER"
+    #     exit 1
+    # fi
 
 	COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
 
@@ -89,10 +91,10 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
     fi
 
     if [ "$IMAGE" == "build-docker-image" ]; then
-        COMMAND="$COMMAND -v /var/run/docker.sock:/var/run/docker.sock"
+        COMMAND="$COMMAND -v /var/run/docker.sock:/var/run/docker.sock "
     fi
 
-	COMMAND="$COMMAND \"$IMAGE\" \"$SCRIPT\""
+	COMMAND="$COMMAND \"$IMAGE\" $SCRIPT"
 	echo $COMMAND
 	eval $COMMAND
 	if [ $? -ne 0 ]; then

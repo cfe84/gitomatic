@@ -16,8 +16,10 @@ line_number=0
 INI_SECTION_COUNT=0
 while IFS= read -r line; do
 	line_number=$((line_number+1))
-	COMMENT=`echo -n $line | grep -E '^[ \t]*$|^[ \t]*#.*$'`
-	[ -z "$COMMENT" ] || continue
+	COMMENT=`echo -n "$line" | grep -E '^[ 	]*(#.*)?$'`
+	if [ -z "$line" ] || [ ! -z "$COMMENT" ]; then
+		continue
+	fi
 	IS_SECTION=`echo -n "$line" | grep -E "$SECTION_REGEXP"`
 	if [ ! -z "$IS_SECTION" ]; then
 		SECTION=`echo -n "$line" | sed -E "s/$SECTION_REGEXP/\\1/"`
@@ -42,6 +44,6 @@ while IFS= read -r line; do
 		fi
 		continue
 	fi
-	echo "Unexpected entry at line $line_number: $line"
+	echo "Unexpected entry at line $line_number: '$line'"
 	exit 1
 done < "$1"
