@@ -26,7 +26,7 @@ PIPELINE_DEFINITION="$TMP_FOLDER/src/.build/pipeline.ini"
 mkdir -p "$ARTIFACTS_FOLDER"
 
 echo -e "\n===== Cloning $REPO@$HEAD =====\n"
-git clone --single-branch --branch "$HEAD" "file://$REPO" "$CLONE_FOLDER"
+git clone --revision "$HEAD" "file://$REPO" "$CLONE_FOLDER"
 
 echo -e "\n===== Loading build definition =====\n"
 source "$WD/parse-ini.sh" "$PIPELINE_DEFINITION"
