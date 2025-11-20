@@ -1,0 +1,12 @@
+#!/bin/bash
+
+UPDATED_FILE="$1"
+TARGET_FILE="/etc/caddy/Caddyfile"
+
+if [ -z "$UPDATED_FILE" ]; then
+  echo "Usage: $0 <path-to-updated-caddyfile>"
+  exit 1
+fi
+
+cp "$UPDATED_FILE" "$TARGET_FILE"
+caddy reload --config "$TARGET_FILE"

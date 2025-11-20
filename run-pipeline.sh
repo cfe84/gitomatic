@@ -30,20 +30,20 @@ source "$WD/parse-ini.sh" "$PIPELINE_DEFINITION"
 
 if [ -n "${FILTER_refs}" ]; then
     if [[ "$REF" != ${FILTER_refs} ]]; then
-        echo "❌ Ref '$REF' does not match filter '${FILTER_refs}'. Exiting pipeline."
+        echo "🗑️ Ref '$REF' does not match filter '${FILTER_refs}'. Exiting pipeline."
         exit 0
     fi
-    echo -e "✔️ Ref '$REF' matches filter '${FILTER_refs}'."
+    echo -e "👍 Ref '$REF' matches filter '${FILTER_refs}'."
 fi
 
 if [ -n "${FILTER_files}" ]; then
     echo "git diff --name-only $REF~1 $REF | grep \"${FILTER_files}\" | tr '\n' ' '"
     FILES_CHANGED=`git diff --name-only $REF~1 $REF | grep "${FILTER_files}" | tr '\n' ' '`
     if [ -z "$FILES_CHANGED" ]; then
-        echo "❌ No changed files match filter '${FILTER_files}'. Exiting pipeline."
+        echo "🗑️ No changed files match filter '${FILTER_files}'. Exiting pipeline."
         exit 0
     fi
-    echo -e "✔️ Changed files matching filter '${FILTER_files}': $FILES_CHANGED\n"
+    echo -e "👍 Changed files matching filter '${FILTER_files}': $FILES_CHANGED\n"
 fi
 echo "Loaded ${INI_SECTION_COUNT} steps."
 
@@ -60,47 +60,63 @@ STEP=1
 while [ $STEP -le $INI_SECTION_COUNT ]; do
 	SECTION=INI_SECTION_${STEP}
 	SECTION_NAME=${!SECTION}
+	TASK_VAR=${SECTION}_task
+    TASK=${!TASK_VAR}
 	IMAGE_VAR=${SECTION}_image
 	IMAGE=${!IMAGE_VAR}
-	ARTIFACTS_VAR=${SECTION}_artifacts
-	ARTIFACTS=${!ARTIFACTS_VAR}
-	SCRIPT_VAR=${SECTION}_script
-	SCRIPT=${!SCRIPT_VAR}
 
 	echo -e "\n===== ⚙️ $SECTION_NAME ($STEP/$INI_SECTION_COUNT) =====\n"
 
-    # if [ ! -f "$CLONE_FOLDER/$SCRIPT" ]; then
-    #     echo -e "\n 🚨 Script $SCRIPT not found. Terminating pipeline 🚨 \n"
-    #     echo "Contents of $CLONE_FOLDER:"
-    #     ls -la "$CLONE_FOLDER"
-    #     exit 1
-    # fi
+    if [ -n "$TASK" ]; then
+        TASK="$WD/tasks/$TASK"
+        if [ ! -f "$TASK" ]; then
+            echo "🚨 Task file '$TASK' not found. Terminating pipeline."
+            exit 1
+        else
+            echo "💡 Found task file: $TASK"
+        fi
+        PARAMETERS_VAR=${SECTION}_parameters
+        PARAMETERS=${!PARAMETERS_VAR}
+        echo -e "\n--- 🚀 Running task: $TASK ---\n"
+        "$TASK" $PARAMETERS
+    elif [ -n "$IMAGE" ]; then
+        echo -e "\n--- 🐳 Running image: $IMAGE ---\n"
+    	ARTIFACTS_VAR=${SECTION}_artifacts
+        ARTIFACTS=${!ARTIFACTS_VAR}
+        SCRIPT_VAR=${SECTION}_script
+        SCRIPT=${!SCRIPT_VAR}
 
-	COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
+        COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
 
-    IFS=';' read -ra pairs <<< "$ARTIFACTS"
-    for pair in "${pairs[@]}"; do
-        IFS=':' read -r NAME MOUNTING_POINT <<< "$pair"
-		ART_FOLDER="$ARTIFACTS_FOLDER/$NAME"
-		mkdir -p "$ART_FOLDER"
-        COMMAND="$COMMAND -v \"$ART_FOLDER:$MOUNTING_POINT\""
-    done
+        IFS=';' read -ra pairs <<< "$ARTIFACTS"
+        for pair in "${pairs[@]}"; do
+            IFS=':' read -r NAME MOUNTING_POINT <<< "$pair"
+            ART_FOLDER="$ARTIFACTS_FOLDER/$NAME"
+            mkdir -p "$ART_FOLDER"
+            COMMAND="$COMMAND -v \"$ART_FOLDER:$MOUNTING_POINT\""
+        done
 
-    if [ -f "$ENV_FILE" ]; then
-        COMMAND="$COMMAND --env-file \"$ENV_FILE\""
+        if [ -f "$ENV_FILE" ]; then
+            COMMAND="$COMMAND --env-file \"$ENV_FILE\""
+        fi
+
+        if [ "$IMAGE" == "build-docker-image" ]; then
+            COMMAND="$COMMAND -v /var/run/docker.sock:/var/run/docker.sock "
+        fi
+
+        COMMAND="$COMMAND \"$IMAGE\" $SCRIPT"
+        echo $COMMAND
+        eval $COMMAND
+    else
+        echo "🚨 Neither task nor image defined for section '$SECTION_NAME'. Terminating pipeline"
+        exit 1
     fi
-
-    if [ "$IMAGE" == "build-docker-image" ]; then
-        COMMAND="$COMMAND -v /var/run/docker.sock:/var/run/docker.sock "
+    if [ $? -ne 0 ]; then
+        echo -e "\n 🚨 Command failed. Terminating pipeline 🚨 \n"
+        exit 1
+    else
+        echo -e "\n--- ✅ Step $SECTION_NAME completed successfully ---\n"
     fi
-
-	COMMAND="$COMMAND \"$IMAGE\" $SCRIPT"
-	echo $COMMAND
-	eval $COMMAND
-	if [ $? -ne 0 ]; then
-		echo -e "\n 🚨 Command failed. Terminating pipeline 🚨 \n"
-		exit 1
-	fi
 
 	STEP=$((STEP+1))
 done

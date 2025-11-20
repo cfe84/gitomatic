@@ -32,6 +32,8 @@ while true; do
         for pipeline in $PIPELINES; do
             echo -e "\n------------------------------------------\n--- 🏗️ Running pipeline: $pipeline\n------------------------------------------\n" >> "$LOG_FILE"
             bash run-pipeline.sh "$pipeline" "$REPO" "$HEAD" >> "$LOG_FILE" 2>&1
+
+            echo -e "\n------------------------------------------\n--- 🏗️ End of pipeline: $pipeline\n------------------------------------------\n\n\n\n\n\n" >> "$LOG_FILE"
         done
         rm -f "$event_file"
     done
