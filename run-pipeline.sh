@@ -6,6 +6,8 @@ WD=`pwd`
 PIPELINE="$1"
 REPO="$2"
 REF="$3"
+OLDREV="$4"
+NEWREV="$5"
 
 cd "$REPO"
 
@@ -37,8 +39,7 @@ if [ -n "${FILTER_refs}" ]; then
 fi
 
 if [ -n "${FILTER_files}" ]; then
-    echo "git diff --name-only $REF~1 $REF | grep \"${FILTER_files}\" | tr '\n' ' '"
-    FILES_CHANGED=`git diff --name-only $REF~1 $REF | grep "${FILTER_files}" | tr '\n' ' '`
+    FILES_CHANGED=`git diff --name-only $OLDREV $NEWREV | grep "${FILTER_files}" | tr '\n' ' '`
     if [ -z "$FILES_CHANGED" ]; then
         echo "🗑️ No changed files match filter '${FILTER_files}'. Exiting pipeline."
         exit 0
@@ -69,6 +70,10 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
 
     if [ -n "$TASK" ]; then
         TASK="$WD/tasks/$TASK"
+        if [ "$ALLOW_TASKS" != "true" ]; then
+            echo "🚨 ALLOW_TASKS is not set to true. Pipeline is instructing to run $TASK but I cannot run local tasks. Terminating pipeline."
+            exit 1
+        fi
         if [ ! -f "$TASK" ]; then
             echo "🚨 Task file '$TASK' not found. Terminating pipeline."
             exit 1
@@ -104,7 +109,7 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
             COMMAND="$COMMAND -v /var/run/docker.sock:/var/run/docker.sock "
         fi
 
-        COMMAND="$COMMAND \"$IMAGE\" $SCRIPT"
+        COMMAND="$COMMAND \"$IMAGE\" -- $SCRIPT"
         echo $COMMAND
         eval $COMMAND
     else

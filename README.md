@@ -1,3 +1,4 @@
+# Installing
 
 ## post-receive hook
 
@@ -9,6 +10,10 @@ Specify an events folder, use the git user's env.
 
 Runs every time a change is detected in the events folder. Picks any `.ini` in the repo, runs them.
 
+You can of course run it locally, but you might want _some_ isolation, and run in Docker. If so, you can create a container using the script in `.build/run-gitomatic.sh`. You'll need to mount both the docker pipe file, and `/tmp` so that your containers use the same files.
+
+# Using
+
 ## pipeline definition
 
 Filter using filters in the `[filter]` section:
@@ -17,9 +22,20 @@ Filter using filters in the `[filter]` section:
 
 Define steps using the following keys:
 
+### Docker
+
 - `image`: name of image to execute. It must be a file.
 - `script`: script to execute in the image.
 - `artifacts`: an artifact name, and the mounting point in the container
+
+### Local tasks
+
+🚨 local tasks run alongside your build script. You don't benefit from any isolation. If gitomatic doesn't run in a container, assume that anyone with write access to your repos will execute whatever they want. 
+
+ENV variable `ALLOW_TASKS` must be set to `true`.
+
+- `task` is the name of the task in the `tasks` folder.
+- `parameters` is a set of parameters to be passed to the task.
 
 ## build script
 
