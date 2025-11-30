@@ -26,7 +26,8 @@ Define steps using the following keys:
 
 - `image`: name of image to execute. It must be a file.
 - `script`: script to execute in the image.
-- `artifacts`: an artifact name, and the mounting point in the container
+- `artifacts`: a list of `;` separated artifacts, composed of name and the mounting point in the container separated by a `:`
+- `env`: a list of environment variables to be passed to the container.
 
 ### Local tasks
 

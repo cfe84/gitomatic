@@ -90,6 +90,8 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         ARTIFACTS=${!ARTIFACTS_VAR}
         SCRIPT_VAR=${SECTION}_script
         SCRIPT=${!SCRIPT_VAR}
+        ENV_VAR=${SECTION}_env
+        ENV=${!ENV_VAR}
 
         COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
 
@@ -105,11 +107,27 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
             COMMAND="$COMMAND --env-file \"$ENV_FILE\""
         fi
 
+        if [ -n "$ENV" ]; then
+            # env_vars are separated by \n literals.
+            ENV=$(printf "%b" "$ENV")
+            IFS=$'\n' read -r -d '' -a env_vars <<< "$ENV"$'\0'
+            for env_var in "${env_vars[@]}"; do
+                COMMAND="$COMMAND -e $env_var"
+            done
+        fi
+
         if [ "$IMAGE" == "build-docker-image" ]; then
             COMMAND="$COMMAND -v /var/run/docker.sock:/var/run/docker.sock "
         fi
 
-        COMMAND="$COMMAND \"$IMAGE\" -- $SCRIPT"
+        COMMAND="$COMMAND \"$IMAGE\""
+        if [ -n "$SCRIPT" ]; then
+            echo "💡 Using custom script for image $IMAGE"
+            COMMAND="$COMMAND \"$SCRIPT\""
+        else
+            echo "💡 No script defined for image $IMAGE. Using default entrypoint."
+        fi
+
         echo $COMMAND
         eval $COMMAND
     else
