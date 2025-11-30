@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# Build logs handler
+# Usage: build-logs <repo-path> <subcommand> [args...]
+
+REPO="$1"
+SUBCOMMAND="$2"
+shift 2
+
+if [ -z "$EVENTS_DIR" ]; then
+  echo "Error: EVENTS_DIR must be set" >&2
+  exit 1
+fi
+
+RESOLVED_ROOT=$(realpath "$REPO_ROOT" 2>/dev/null)
+if [ $? -ne 0 ]; then
+  echo "Error: REPO_ROOT does not exist: $REPO_ROOT" >&2
+  exit 1
+fi
+if [ "$REPO" != "$RESOLVED_ROOT"* ]; then
+  echo "Error: Repository path is outside of REPO_ROOT" >&2
+  exit 1
+fi
+
+IS_BARE=$(git --git-dir="$REPO" rev-parse --is-bare-repository 2>/dev/null | grep true)
+if [ -n "$IS_BARE" ]; then
+    LOG_FOLDER="$REPO/build/logs"
+else
+    LOG_FOLDER="$EVENTS_DIR/logs"
+fi
+
+case "$SUBCOMMAND" in
+  last)
+    # Output the last (most recent) log file
+    if [ ! -d "$LOG_FOLDER" ] || [ -z "$(ls -A "$LOG_FOLDER"/*.log 2>/dev/null)" ]; then
+      exit 0
+    fi
+    LAST_LOG=$(ls -1t "$LOG_FOLDER"/*.log 2>/dev/null | head -n1)
+    if [ -n "$LAST_LOG" ]; then
+      cat "$LAST_LOG"
+    fi
+    exit 0
+    ;;
+
+  all)
+    # Output all log files in alphabetical order
+    if [ ! -d "$LOG_FOLDER" ] || [ -z "$(ls -A "$LOG_FOLDER"/*.log 2>/dev/null)" ]; then
+      exit 0
+    fi
+    cat "$LOG_FOLDER"/*.log 2>/dev/null
+    exit 0
+    ;;
+
+  ls)
+    # List log files with formatted dates
+    if [ ! -d "$LOG_FOLDER" ] || [ -z "$(ls -A "$LOG_FOLDER"/*.log 2>/dev/null)" ]; then
+      exit 0
+    fi
+    
+    cd "$LOG_FOLDER"
+    for logfile in *.log 2>/dev/null; do
+      [ -e "$logfile" ] || continue
+      TIMESTAMP=$(echo "$logfile" | sed -E 's/^([0-9]+)-.*/\1/')
+      if [ -n "$TIMESTAMP" ] && [ "$TIMESTAMP" -eq "$TIMESTAMP" ] 2>/dev/null; then
+        FORMATTED_DATE=$(date -d "@$TIMESTAMP" +"%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "Unknown")
+        echo "$FORMATTED_DATE  $logfile"
+      else
+        echo "Unknown              $logfile"
+      fi
+    done
+    exit 0
+    ;;
+
+  show)
+    # Show a specific log file
+    LOGFILE="$1"
+    
+    if [ -z "$LOGFILE" ]; then
+      echo "Error: Log filename required. Usage: git build logs show <filename>" >&2
+      exit 1
+    fi
+    
+    # Sanitize filename - use only basename to prevent directory traversal
+    LOGFILE=$(basename "$LOGFILE")
+    
+    if [[ ! "$LOGFILE" =~ \.log$ ]]; then
+      LOGFILE="${LOGFILE}.log"
+    fi
+    
+    FULL_PATH="$LOG_FOLDER/$LOGFILE"
+    
+    if [ ! -f "$FULL_PATH" ]; then
+      echo "Error: Log file not found: $LOGFILE" >&2
+      exit 2
+    fi
+    
+    cat "$FULL_PATH"
+    exit 0
+    ;;
+
+  *)
+    echo "Error: Unknown git build logs subcommand: $SUBCOMMAND" >&2
+    echo "Available subcommands: last, all, ls, show <filename>" >&2
+    exit 1
+    ;;
+esac

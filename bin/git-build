@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Git build client dispatcher
+# Usage: git-build logs <subcommand> [--repo|-r <path>] [args...]
+
+# Parse arguments
+SUBCOMMAND=""
+REPO=""
+ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    logs)
+      SUBCOMMAND="logs"
+      shift
+      ;;
+    --repo|-r)
+      REPO="$2"
+      ARGS+=("--repo" "$2")
+      shift 2
+      ;;
+    *)
+      ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Validate subcommand
+if [ "$SUBCOMMAND" != "logs" ]; then
+  echo "Error: Unknown subcommand. Usage: git-build logs <subcommand> [--repo|-r <path>]" >&2
+  exit 1
+fi
+
+# Determine repository if not specified
+if [ -z "$REPO" ]; then
+    GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+    if [ $? -eq 0 ]; then
+      REPO=$(basename "$GIT_ROOT")
+      ARGS+=("--repo" "$REPO")
+    fi
+  fi
+fi
+
+# Get the directory of this script
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+
+# Invoke the logs handler
+exec "$SCRIPT_DIR/git-build-logs" "${ARGS[@]}"
