@@ -3,19 +3,10 @@
 # Main dispatcher for build commands
 # Usage: build logs <subcommand> [--repo|-r <path>]
 
+source "$HOME/.env"
+
 if [ -z "$EVENTS_DIR" ]; then
   echo "Error: EVENTS_DIR must be set" >&2
-  exit 1
-fi
-
-if [ -z "$REPO_ROOT" ]; then
-  echo "Error: REPO_ROOT must be set" >&2
-  exit 1
-fi
-
-RESOLVED_ROOT=$(realpath "$REPO_ROOT" 2>/dev/null)
-if [ $? -ne 0 ]; then
-  echo "Error: REPO_ROOT does not exist: $REPO_ROOT" >&2
   exit 1
 fi
 
@@ -51,25 +42,33 @@ if [ -z "$REPO" ]; then
   exit 1
 fi
 
-RESOLVED_REPO=$(realpath "$REPO" 2>/dev/null)
-if [ $? -ne 0 ]; then
-  echo "Error: Repository path does not exist: $REPO" >&2
-  exit 1
+RESOLVED_REPO=$(realpath "$REPO_ROOT/$REPO" 2>/dev/null)
+if [ $? -ne 0 ] || [ ! -d "$RESOLVED_REPO" ]; then
+    echo "Error: Repository path does not exist: $REPO" >&2
+    exit 1
 fi
 
-# Check that RESOLVED_REPO is within REPO_ROOT to prevent directory traversal.
-case "$RESOLVED_REPO" in
-  "$RESOLVED_ROOT"/*)
-    # Path is within REPO_ROOT
-    ;;
-  "$RESOLVED_ROOT")
-    # Path is exactly REPO_ROOT
-    ;;
-  *)
-    echo "Error: Repository path is outside REPO_ROOT: $RESOLVED_REPO" >&2
+if [ -n "$REPO_ROOT" ]; then
+    RESOLVED_ROOT=$(realpath "$REPO_ROOT" 2>/dev/null)
+    if [ $? -ne 0 ]; then
+    echo "Error: REPO_ROOT does not exist: $REPO_ROOT" >&2
     exit 1
-    ;;
-esac
+    fi
+
+    # Check that RESOLVED_REPO is within REPO_ROOT to prevent directory traversal.
+    case "$RESOLVED_REPO" in
+    "$RESOLVED_ROOT"/*)
+        # Path is within REPO_ROOT
+        ;;
+    "$RESOLVED_ROOT")
+        # Path is exactly REPO_ROOT
+        ;;
+    *)
+        echo "Error: Repository path is outside REPO_ROOT: $RESOLVED_REPO" >&2
+        exit 1
+        ;;
+    esac
+fi
 
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 exec "$SCRIPT_DIR/build-logs" "$RESOLVED_REPO" "${ARGS[@]}"

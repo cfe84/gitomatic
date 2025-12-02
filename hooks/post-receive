@@ -1,8 +1,10 @@
 #!/bin/bash
 
+source "$HOME/.env"
+
 while read oldrev newrev refname; do
 	repo=`pwd`
 	eventId="`date +%s`-`basename $repo`"
 	echo "$repo:$refname:$oldrev:$newrev" > /events/$eventId
-	echo "Gitomatic event triggered for $repo/$refname. Event id: $eventId"
+	echo "🚀 Gitomatic event triggered for $repo/$refname. '$EVENTS_DIR' Event id: $eventId"
 done

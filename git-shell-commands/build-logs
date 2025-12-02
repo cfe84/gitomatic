@@ -3,24 +3,11 @@
 # Build logs handler
 # Usage: build-logs <repo-path> <subcommand> [args...]
 
+source "$HOME/.env"
+
 REPO="$1"
 SUBCOMMAND="$2"
 shift 2
-
-if [ -z "$EVENTS_DIR" ]; then
-  echo "Error: EVENTS_DIR must be set" >&2
-  exit 1
-fi
-
-RESOLVED_ROOT=$(realpath "$REPO_ROOT" 2>/dev/null)
-if [ $? -ne 0 ]; then
-  echo "Error: REPO_ROOT does not exist: $REPO_ROOT" >&2
-  exit 1
-fi
-if [ "$REPO" != "$RESOLVED_ROOT"* ]; then
-  echo "Error: Repository path is outside of REPO_ROOT" >&2
-  exit 1
-fi
 
 IS_BARE=$(git --git-dir="$REPO" rev-parse --is-bare-repository 2>/dev/null | grep true)
 if [ -n "$IS_BARE" ]; then
@@ -51,17 +38,17 @@ case "$SUBCOMMAND" in
     exit 0
     ;;
 
-  ls)
+  ls|list)
     # List log files with formatted dates
     if [ ! -d "$LOG_FOLDER" ] || [ -z "$(ls -A "$LOG_FOLDER"/*.log 2>/dev/null)" ]; then
       exit 0
     fi
     
     cd "$LOG_FOLDER"
-    for logfile in *.log 2>/dev/null; do
+    for logfile in *.log; do
       [ -e "$logfile" ] || continue
       TIMESTAMP=$(echo "$logfile" | sed -E 's/^([0-9]+)-.*/\1/')
-      if [ -n "$TIMESTAMP" ] && [ "$TIMESTAMP" -eq "$TIMESTAMP" ] 2>/dev/null; then
+      if [ -n "$TIMESTAMP" ]; then
         FORMATTED_DATE=$(date -d "@$TIMESTAMP" +"%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "Unknown")
         echo "$FORMATTED_DATE  $logfile"
       else

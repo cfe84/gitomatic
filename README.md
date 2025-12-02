@@ -29,9 +29,6 @@ Define steps using the following keys:
 - `artifacts`: a list of `;` separated artifacts, composed of name and the mounting point in the container separated by a `:`
 - `env`: a list of environment variables to be passed to the container.
 
-There are a few magic containers:
-- `git`: repo root is mounted in folder `/repos`.
-
 ### Local tasks
 
 🚨 local tasks run alongside your build script. You don't benefit from any isolation. If gitomatic doesn't run in a container, assume that anyone with write access to your repos will execute whatever they want. 
@@ -40,6 +37,16 @@ ENV variable `ALLOW_TASKS` must be set to `true`.
 
 - `task` is the name of the task in the `tasks` folder.
 - `parameters` is a set of parameters to be passed to the task.
+
+### Additional repos
+
+You may need code from additional repositories to build. You have two solutions:
+
+1. Use the `git` image to checkout
+2. Use the git task:
+    - `repo`: local repo task
+    - `artifact`: artifact name
+    - `revision`: _optional_ revision to checkout.
 
 ## build script
 
