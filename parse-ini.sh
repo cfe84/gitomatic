@@ -14,7 +14,7 @@ KEYVALUES_REGEXP='^[ 	]*([a-zA-Z0-9_-]+)=(.+)$'
 
 line_number=0
 INI_SECTION_COUNT=0
-while IFS= read -r line; do
+while IFS= read -r line || [ -n "$line" ]; do
 	line_number=$((line_number+1))
 	COMMENT=`echo -n "$line" | grep -E '^[ 	]*(#.*)?$'`
 	if [ -z "$line" ] || [ ! -z "$COMMENT" ]; then

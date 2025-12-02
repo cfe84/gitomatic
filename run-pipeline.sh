@@ -41,12 +41,12 @@ fi
 if [ -n "${FILTER_files}" ]; then
     FILES_CHANGED=`git diff --name-only $OLDREV $NEWREV | grep "${FILTER_files}" | tr '\n' ' '`
     if [ -z "$FILES_CHANGED" ]; then
-        echo "🗑️ No changed files match filter '${FILTER_files}'. Exiting pipeline."
+        echo "🛑 No changed files match filter '${FILTER_files}'. Exiting pipeline."
         exit 0
     fi
     echo -e "👍 Changed files matching filter '${FILTER_files}': $FILES_CHANGED\n"
 fi
-echo "Loaded ${INI_SECTION_COUNT} steps."
+echo "🚀 Running pipeline! Loaded ${INI_SECTION_COUNT} steps."
 
 echo -e "\n===== 💾 Cloning $REPO @ $REF =====\n"
 git clone --revision "$REF" "file://$REPO" "$CLONE_FOLDER"
@@ -65,6 +65,8 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
     TASK=${!TASK_VAR}
 	IMAGE_VAR=${SECTION}_image
 	IMAGE=${!IMAGE_VAR}
+    ADDITIONAL_REPO_VAR=${SECTION}_repo
+    ADDITIONAL_REPO=${!ADDITIONAL_REPO_VAR}
 
 	echo -e "\n===== ⚙️ $SECTION_NAME ($STEP/$INI_SECTION_COUNT) =====\n"
 
@@ -84,6 +86,23 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         PARAMETERS=${!PARAMETERS_VAR}
         echo -e "\n--- 🚀 Running task: $TASK ---\n"
         "$TASK" $PARAMETERS
+    elif [ -n "$ADDITIONAL_REPO" ]; then
+        ARTIFACT_VAR="${SECTION}_artifact"
+        ARTIFACT="${!ARTIFACT_VAR}"
+        ADDITIONAL_REPO_CLONE_PATH="$ARTIFACTS_FOLDER/$ARTIFACT"
+        REVISION_VAR="${SECTION}_revision"
+        REVISION=${!REVISION_VAR}
+        if [ -n "$REVISION" ]; then
+            REVISION="--revision \"$REVISION\""
+        fi
+        echo -e "\n--- 📦 Cloning additional repo $ARTIFACT: $ADDITIONAL_REPO ---\n"
+        git clone "file://$REPO_ROOT/$ADDITIONAL_REPO" $REVISION "$ADDITIONAL_REPO_CLONE_PATH"
+        if [ $? -ne 0 ]; then
+            echo -e "\n 🚨 Cloning additional repo failed. Terminating pipeline 🚨 \n"
+            exit 1
+        else
+            echo -e "\n--- ✅ Additional repo $ADDITIONAL_REPO cloned successfully ---\n"
+        fi
     elif [ -n "$IMAGE" ]; then
         echo -e "\n--- 🐳 Running image: $IMAGE ---\n"
     	ARTIFACTS_VAR=${SECTION}_artifacts
@@ -101,9 +120,11 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
             ART_FOLDER="$ARTIFACTS_FOLDER/$NAME"
             mkdir -p "$ART_FOLDER"
             COMMAND="$COMMAND -v \"$ART_FOLDER:$MOUNTING_POINT\""
+            echo "- Mounting artifact '$NAME' at '$MOUNTING_POINT'"
         done
 
         if [ -f "$ENV_FILE" ]; then
+            echo "- Using env file: $ENV_FILE"
             COMMAND="$COMMAND --env-file \"$ENV_FILE\""
         fi
 
@@ -112,20 +133,22 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
             ENV=$(printf "%b" "$ENV")
             IFS=$'\n' read -r -d '' -a env_vars <<< "$ENV"$'\0'
             for env_var in "${env_vars[@]}"; do
+                echo "- Setting env var: $env_var"
                 COMMAND="$COMMAND -e $env_var"
             done
         fi
 
         if [ "$IMAGE" == "build-docker-image" ]; then
+            echo "- Mounting Docker socket"
             COMMAND="$COMMAND -v /var/run/docker.sock:/var/run/docker.sock "
         fi
 
         COMMAND="$COMMAND \"$IMAGE\""
         if [ -n "$SCRIPT" ]; then
-            echo "💡 Using custom script for image $IMAGE"
+            echo "- Using custom script for image $IMAGE"
             COMMAND="$COMMAND \"$SCRIPT\""
         else
-            echo "💡 No script defined for image $IMAGE. Using default entrypoint."
+            echo "- No script defined for image $IMAGE. Using default entrypoint."
         fi
 
         echo $COMMAND
