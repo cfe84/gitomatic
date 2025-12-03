@@ -111,6 +111,10 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         SCRIPT=${!SCRIPT_VAR}
         ENV_VAR=${SECTION}_env
         ENV=${!ENV_VAR}
+        WORKDIR_VAR=${SECTION}_workdir
+        WORKDIR=${!WORKDIR_VAR}
+        ENTRYPOINT_VAR=${SECTION}_entrypoint
+        ENTRYPOINT=${!ENTRYPOINT_VAR}
 
         COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
 
@@ -123,9 +127,19 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
             echo "- Mounting artifact '$NAME' at '$MOUNTING_POINT'"
         done
 
+        if [ -n "$WORKDIR" ]; then
+            echo "- Setting working directory to: $WORKDIR"
+            COMMAND="$COMMAND -w \"$WORKDIR\""
+        fi
+
         if [ -f "$ENV_FILE" ]; then
             echo "- Using env file: $ENV_FILE"
             COMMAND="$COMMAND --env-file \"$ENV_FILE\""
+        fi
+
+        if [ -f "$ENTRYPOINT" ]; then
+            echo "- Using custom entrypoint: $ENTRYPOINT"
+            COMMAND="$COMMAND --entrypoint \"$ENTRYPOINT\""
         fi
 
         if [ -n "$ENV" ]; then
