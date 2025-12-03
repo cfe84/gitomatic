@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Build env handler
+# Usage: build-env <repo-path> <subcommand> [args...]
+
+source "$HOME/.env"
+
+REPO="$1"
+SUBCOMMAND="$2"
+shift 2
+
+IS_BARE=$(git --git-dir="$REPO" rev-parse --is-bare-repository 2>/dev/null | grep true)
+if [ -n "$IS_BARE" ]; then
+    ENV_FOLDER="$REPO/build"
+else
+    ENV_FOLDER="$EVENTS_DIR"
+fi
+
+ENV_FILE="$ENV_FOLDER/env"
+
+case "$SUBCOMMAND" in
+  set)
+    # Set an environment variable
+    # Usage: set KEY=VALUE
+    if [ $# -eq 0 ]; then
+      echo "Error: No variable provided. Usage: git build env set KEY=VALUE" >&2
+      exit 1
+    fi
+    
+    VAR_ASSIGNMENT="$1"
+    
+    if [[ ! "$VAR_ASSIGNMENT" =~ ^[A-Za-z_][A-Za-z0-9_]*=.* ]]; then
+      echo "Error: Invalid format. Usage: git build env set KEY=VALUE" >&2
+      exit 1
+    fi
+    
+    KEY="${VAR_ASSIGNMENT%%=*}"
+    mkdir -p "$ENV_FOLDER"
+    touch "$ENV_FILE"
+    
+    grep -v "^${KEY}=" "$ENV_FILE" > "$ENV_FILE.tmp" 2>/dev/null || true
+    echo "$VAR_ASSIGNMENT" >> "$ENV_FILE.tmp"
+    mv "$ENV_FILE.tmp" "$ENV_FILE"
+    
+    echo "Set $KEY"
+    exit 0
+    ;;
+
+  ls|list)
+    if [ ! -f "$ENV_FILE" ]; then
+      exit 0
+    fi
+    
+    grep -E "^[A-Za-z_][A-Za-z0-9_]*=" "$ENV_FILE" | sed 's/=.*//' | sort
+    exit 0
+    ;;
+
+  *)
+    echo "Error: Unknown git build env subcommand: $SUBCOMMAND" >&2
+    echo "Available subcommands: set <KEY=VALUE>, ls" >&2
+    exit 1
+    ;;
+esac

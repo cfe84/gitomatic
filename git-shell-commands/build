@@ -17,8 +17,8 @@ ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    logs)
-      SUBCOMMAND="logs"
+    logs|env)
+      SUBCOMMAND="$1"
       shift
       ;;
     --repo|-r)
@@ -32,8 +32,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [ "$SUBCOMMAND" != "logs" ]; then
-  echo "Error: Unknown subcommand. Usage: build logs <subcommand> [--repo|-r <path>]" >&2
+if [ "$SUBCOMMAND" != "logs" ] && [ "$SUBCOMMAND" != "env" ]; then
+  echo "Error: Unknown subcommand. Usage: build <logs|env> <subcommand> [--repo|-r <path>]" >&2
   exit 1
 fi
 
@@ -71,4 +71,9 @@ if [ -n "$REPO_ROOT" ]; then
 fi
 
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
-exec "$SCRIPT_DIR/build-logs" "$RESOLVED_REPO" "${ARGS[@]}"
+
+if [ "$SUBCOMMAND" = "logs" ]; then
+  exec "$SCRIPT_DIR/build-logs" "$RESOLVED_REPO" "${ARGS[@]}"
+elif [ "$SUBCOMMAND" = "env" ]; then
+  exec "$SCRIPT_DIR/build-env" "$RESOLVED_REPO" "${ARGS[@]}"
+fi

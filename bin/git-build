@@ -12,8 +12,8 @@ ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    logs)
-      SUBCOMMAND="logs"
+    logs|env)
+      SUBCOMMAND="$1"
       shift
       ;;
     --repo|-r)
@@ -29,8 +29,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate subcommand
-if [ "$SUBCOMMAND" != "logs" ]; then
-  echo "Error: Unknown subcommand. Usage: git-build logs <subcommand> [--repo|-r <path>]" >&2
+if [ "$SUBCOMMAND" != "logs" ] && [ "$SUBCOMMAND" != "env" ]; then
+  echo "Error: Unknown subcommand. Usage: git-build <logs|env> <subcommand> [--repo|-r <path>]" >&2
   exit 1
 fi
 
@@ -48,5 +48,9 @@ fi
 # Get the directory of this script
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
-# Invoke the logs handler
-exec "$SCRIPT_DIR/git-build-logs" "${ARGS[@]}"
+# Invoke the appropriate handler
+if [ "$SUBCOMMAND" = "logs" ]; then
+  exec "$SCRIPT_DIR/git-build-logs" "${ARGS[@]}"
+elif [ "$SUBCOMMAND" = "env" ]; then
+  exec "$SCRIPT_DIR/git-build-env" "${ARGS[@]}"
+fi
