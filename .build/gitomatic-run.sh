@@ -26,6 +26,7 @@ docker run -d \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v $EVENTS_DIR:/events \
     -v $REPO_ROOT:/repos \
+    -v $SSH_DIR:/root/.ssh \
     -v /tmp:/tmp \
     -e EVENTS_DIR=/events \
     -e REPO_ROOT=/repos \

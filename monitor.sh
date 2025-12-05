@@ -33,6 +33,9 @@ while true; do
         mkdir -p "$LOG_FOLDER"
         LOG_FILE="$LOG_FOLDER/$(basename "$event_file").log"
         echo -e "\n##########################################################################################################################################################\n\nRepo $REPO - Revision $HEAD - `date`" > "$LOG_FILE"
+
+        bash push-to-remotes.sh "$REPO" "$HEAD" >> "$LOG_FILE" 2>&1
+
         PIPELINES=`./find-pipelines.sh "$REPO" "$HEAD"`
         if [ -z "$PIPELINES" ]; then
             echo "No pipelines found in $REPO. Exiting." >> "$LOG_FILE"

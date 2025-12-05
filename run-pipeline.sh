@@ -62,11 +62,11 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
 	SECTION=INI_SECTION_${STEP}
 	SECTION_NAME=${!SECTION}
 	TASK_VAR=${SECTION}_task
-    TASK=${!TASK_VAR}
+  TASK=${!TASK_VAR}
 	IMAGE_VAR=${SECTION}_image
 	IMAGE=${!IMAGE_VAR}
-    ADDITIONAL_REPO_VAR=${SECTION}_repo
-    ADDITIONAL_REPO=${!ADDITIONAL_REPO_VAR}
+  ADDITIONAL_REPO_VAR=${SECTION}_repo
+  ADDITIONAL_REPO=${!ADDITIONAL_REPO_VAR}
 
 	echo -e "\n===== ⚙️ $SECTION_NAME ($STEP/$INI_SECTION_COUNT) =====\n"
 
@@ -105,7 +105,7 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         fi
     elif [ -n "$IMAGE" ]; then
         echo -e "\n--- 🐳 Running image: $IMAGE ---\n"
-    	ARTIFACTS_VAR=${SECTION}_artifacts
+        ARTIFACTS_VAR=${SECTION}_artifacts
         ARTIFACTS=${!ARTIFACTS_VAR}
         SCRIPT_VAR=${SECTION}_script
         SCRIPT=${!SCRIPT_VAR}
