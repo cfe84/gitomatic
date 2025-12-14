@@ -9,6 +9,28 @@ REPO="$1"
 SUBCOMMAND="$2"
 shift 2
 
+WATCH=0
+PARSED_ARGS=()
+
+# Extract watch flag and leave remaining args intact
+for arg in "$@"; do
+  case "$arg" in
+    -w|--watch)
+      WATCH=1
+      ;;
+    *)
+      PARSED_ARGS+=("$arg")
+      ;;
+  esac
+done
+
+set -- "${PARSED_ARGS[@]}"
+
+if [ "$WATCH" -eq 1 ] && [ "$SUBCOMMAND" != "last" ] && [ "$SUBCOMMAND" != "show" ]; then
+  echo "Error: --watch is only supported for 'last' or 'show'" >&2
+  exit 1
+fi
+
 IS_BARE=$(git --git-dir="$REPO" rev-parse --is-bare-repository 2>/dev/null | grep true)
 if [ -n "$IS_BARE" ]; then
     LOG_FOLDER="$REPO/build/logs"
@@ -24,7 +46,11 @@ case "$SUBCOMMAND" in
     fi
     LAST_LOG=$(ls -1t "$LOG_FOLDER"/*.log 2>/dev/null | head -n1)
     if [ -n "$LAST_LOG" ]; then
-      cat "$LAST_LOG"
+      if [ "$WATCH" -eq 1 ]; then
+        tail -n +1 -f "$LAST_LOG"
+      else
+        cat "$LAST_LOG"
+      fi
     fi
     exit 0
     ;;
@@ -81,7 +107,11 @@ case "$SUBCOMMAND" in
       exit 2
     fi
     
-    cat "$FULL_PATH"
+    if [ "$WATCH" -eq 1 ]; then
+      tail -n +1 -f "$FULL_PATH"
+    else
+      cat "$FULL_PATH"
+    fi
     exit 0
     ;;
 
