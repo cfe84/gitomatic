@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# Trigger a build event and follow its logs
+# Usage: build-run <repo-path> [--ref <ref>] [--watch|-w]
+
+source "$HOME/.env"
+
+if [ -z "$EVENTS_DIR" ]; then
+  echo "Error: EVENTS_DIR must be set" >&2
+  exit 1
+fi
+
+REPO="$1"
+shift
+
+REF_OVERRIDE=""
+WATCH=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ref)
+      REF_OVERRIDE="$2"
+      shift 2
+      ;;
+    -w|--watch)
+      WATCH=1
+      shift
+      ;;
+    *)
+      echo "Error: Unknown argument: $1" >&2
+      echo "Usage: build run [--repo|-r <path>] [--ref <ref>] [--watch|-w]" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Determine ref to build
+if [ -n "$REF_OVERRIDE" ]; then
+  REF="$REF_OVERRIDE"
+else
+  REF=$(git --git-dir="$REPO" symbolic-ref HEAD 2>/dev/null)
+  if [ -z "$REF" ]; then
+    REF=$(git --git-dir="$REPO" rev-parse HEAD 2>/dev/null)
+  fi
+fi
+
+if [ -z "$REF" ]; then
+  echo "Error: Could not determine ref for repository: $REPO" >&2
+  exit 1
+fi
+
+NEWREV=$(git --git-dir="$REPO" rev-parse "$REF" 2>/dev/null)
+if [ -z "$NEWREV" ]; then
+  echo "Error: Could not resolve ref '$REF' in repository: $REPO" >&2
+  exit 1
+fi
+
+# Use an all-zero old revision so filters using diffs still consider the full tree
+OLDREV="0000000000000000000000000000000000000000"
+
+# Store the absolute repo path in the event file (matches post-receive hook behavior)
+FOLDER="$REPO"
+
+mkdir -p "$EVENTS_DIR"
+EVENT_ID="$(date +%s)-$(basename "$REPO")"
+EVENT_FILE="$EVENTS_DIR/$EVENT_ID"
+
+echo "$FOLDER:$REF:$OLDREV:$NEWREV" > "$EVENT_FILE"
+echo "Created event $EVENT_ID for $FOLDER @ $REF ($NEWREV)"
+
+# Path to helpers
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+
+# Determine log file to follow
+IS_BARE=$(git --git-dir="$REPO" rev-parse --is-bare-repository 2>/dev/null | grep true)
+if [ -n "$IS_BARE" ]; then
+  LOG_FOLDER="$REPO/build/logs"
+else
+  LOG_FOLDER="$EVENTS_DIR/logs"
+fi
+LOG_FILE="$LOG_FOLDER/${EVENT_ID}.log"
+
+mkdir -p "$LOG_FOLDER"
+
+# Wait for the log file to appear, then follow it
+if [ ! -f "$LOG_FILE" ]; then
+  echo "Waiting for log file: $LOG_FILE"
+  while [ ! -f "$LOG_FILE" ]; do
+    sleep 1
+  done
+fi
+
+if [ "$WATCH" -eq 1 ]; then
+  exec "$SCRIPT_DIR/build-logs" "$REPO" last --watch
+fi
+
+tail -n +1 -f "$LOG_FILE"

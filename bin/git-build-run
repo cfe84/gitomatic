@@ -1,0 +1,39 @@
+#!/bin/bash
+
+function print_usage_and_exit() {
+  echo "Usage: git-build run [--repo|-r <path>] [--ref <ref>] [--watch|-w]" >&2
+  exit 1
+}
+
+REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+if [ $? -ne 0 ]; then
+  echo "Error: Could not determine git remote origin" >&2
+  exit 1
+fi
+
+SSH_TARGET=""
+
+# Try ssh:// format first
+if [[ "$REMOTE_URL" =~ ^ssh://([^/]+)/ ]]; then
+  SSH_TARGET="${BASH_REMATCH[1]}"
+# Try git@ format (git@host:path or user@host:path)
+elif [[ "$REMOTE_URL" =~ ^([^@]+@[^:]+): ]]; then
+  SSH_TARGET="${BASH_REMATCH[1]}"
+# Try plain user@host format
+elif [[ "$REMOTE_URL" =~ ^([^@]+@[^/]+)/ ]]; then
+  SSH_TARGET="${BASH_REMATCH[1]}"
+fi
+
+if [ -z "$SSH_TARGET" ]; then
+  echo "Error: Could not parse SSH connection from remote URL: $REMOTE_URL" >&2
+  exit 1
+fi
+
+REMOTE_CMD="build run"
+
+for arg in "$@"; do
+    REMOTE_CMD="$REMOTE_CMD \"$arg\""
+done
+
+ssh "$SSH_TARGET" "$REMOTE_CMD"
+exit $?

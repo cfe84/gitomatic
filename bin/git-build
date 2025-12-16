@@ -12,7 +12,7 @@ ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    logs|env)
+    logs|env|run)
       SUBCOMMAND="$1"
       shift
       ;;
@@ -29,8 +29,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate subcommand
-if [ "$SUBCOMMAND" != "logs" ] && [ "$SUBCOMMAND" != "env" ]; then
-  echo "Error: Unknown subcommand. Usage: git-build <logs|env> <subcommand> [--repo|-r <path>]" >&2
+if [ "$SUBCOMMAND" != "logs" ] && [ "$SUBCOMMAND" != "env" ] && [ "$SUBCOMMAND" != "run" ]; then
+  echo "Error: Unknown subcommand. Usage: git-build <logs|env|run> <subcommand> [--repo|-r <path>]" >&2
   exit 1
 fi
 
@@ -53,4 +53,6 @@ if [ "$SUBCOMMAND" = "logs" ]; then
   exec "$SCRIPT_DIR/git-build-logs" "${ARGS[@]}"
 elif [ "$SUBCOMMAND" = "env" ]; then
   exec "$SCRIPT_DIR/git-build-env" "${ARGS[@]}"
+elif [ "$SUBCOMMAND" = "run" ]; then
+  exec "$SCRIPT_DIR/git-build-run" "${ARGS[@]}"
 fi
