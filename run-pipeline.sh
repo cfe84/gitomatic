@@ -26,6 +26,10 @@ ENV_FILE="$TMP_FOLDER/env"
 
 mkdir -p "$ARTIFACTS_FOLDER"
 
+#############################
+# Build definition and check if the pipeline should run
+#############################
+
 echo -e "\n===== 📄 Loading build definition =====\n"
 git show "$REF:$PIPELINE" > "$PIPELINE_DEFINITION"
 source "$WD/parse-ini.sh" "$PIPELINE_DEFINITION"
@@ -56,19 +60,23 @@ if [ -f "$SRC_ENV_FILE" ]; then
     cp "$SRC_ENV_FILE" "$ENV_FILE"
 fi
 
+#############################
+# Run the steps
+#############################
+
 STEP=1
 
 while [ $STEP -le $INI_SECTION_COUNT ]; do
-	SECTION=INI_SECTION_${STEP}
-	SECTION_NAME=${!SECTION}
-	TASK_VAR=${SECTION}_task
-  TASK=${!TASK_VAR}
-	IMAGE_VAR=${SECTION}_image
-	IMAGE=${!IMAGE_VAR}
-  ADDITIONAL_REPO_VAR=${SECTION}_repo
-  ADDITIONAL_REPO=${!ADDITIONAL_REPO_VAR}
+    SECTION=INI_SECTION_${STEP}
+    SECTION_NAME=${!SECTION}
+    TASK_VAR=${SECTION}_task
+    TASK=${!TASK_VAR}
+    IMAGE_VAR=${SECTION}_image
+    IMAGE=${!IMAGE_VAR}
+    ADDITIONAL_REPO_VAR=${SECTION}_repo
+    ADDITIONAL_REPO=${!ADDITIONAL_REPO_VAR}
 
-	echo -e "\n===== ⚙️ $SECTION_NAME ($STEP/$INI_SECTION_COUNT) =====\n"
+    echo -e "\n===== ⚙️ $SECTION_NAME ($STEP/$INI_SECTION_COUNT) =====\n"
 
     if [ -n "$TASK" ]; then
         TASK="$WD/tasks/$TASK"
@@ -115,6 +123,8 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         WORKDIR=${!WORKDIR_VAR}
         ENTRYPOINT_VAR=${SECTION}_entrypoint
         ENTRYPOINT=${!ENTRYPOINT_VAR}
+        MOUNT_VAR=${SECTION}_mount
+        MOUNT=${!MOUNT_VAR}
 
         COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
 
@@ -130,6 +140,15 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         if [ -n "$WORKDIR" ]; then
             echo "- Setting working directory to: $WORKDIR"
             COMMAND="$COMMAND -w \"$WORKDIR\""
+        fi
+
+        if [ -n "$MOUNT" ]; then
+            IFS=';' read -ra mounts <<< "$MOUNT"
+            for mount in "${mounts[@]}"; do
+                IFS=':' read -r HOST_PATH CONTAINER_PATH <<< "$mount"
+                echo "- Mounting host path '$HOST_PATH' to container path '$CONTAINER_PATH'"
+                COMMAND="$COMMAND -v \"$HOST_PATH:$CONTAINER_PATH\""
+            done
         fi
 
         if [ -f "$ENV_FILE" ]; then
@@ -178,7 +197,7 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         echo -e "\n--- ✅ Step $SECTION_NAME completed successfully ---\n"
     fi
 
-	STEP=$((STEP+1))
+    STEP=$((STEP+1))
 done
 
 echo -e "\n===== ✅ Build succeeded =====\n"
