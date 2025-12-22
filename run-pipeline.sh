@@ -126,7 +126,15 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
         MOUNT_VAR=${SECTION}_mount
         MOUNT=${!MOUNT_VAR}
 
-        COMMAND="docker run --rm -v \"$CLONE_FOLDER:/src\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
+        if [ -n "$WORKDIR" ]; then
+            echo "- Setting working directory to: $WORKDIR"
+            COMMAND="$COMMAND -w \"$WORKDIR\""
+        else
+            WORKDIR="/src"
+            echo "- No working directory defined. Using default: $WORKDIR"
+        fi
+
+        COMMAND="docker run --rm -v \"$CLONE_FOLDER:$WORKDIR\" -e REF=\"$REF\" -e REPO=\"$REPO\" "
 
         IFS=';' read -ra pairs <<< "$ARTIFACTS"
         for pair in "${pairs[@]}"; do
@@ -136,11 +144,6 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
             COMMAND="$COMMAND -v \"$ART_FOLDER:$MOUNTING_POINT\""
             echo "- Mounting artifact '$NAME' at '$MOUNTING_POINT'"
         done
-
-        if [ -n "$WORKDIR" ]; then
-            echo "- Setting working directory to: $WORKDIR"
-            COMMAND="$COMMAND -w \"$WORKDIR\""
-        fi
 
         if [ -n "$MOUNT" ]; then
             IFS=';' read -ra mounts <<< "$MOUNT"
