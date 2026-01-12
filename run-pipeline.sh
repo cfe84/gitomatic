@@ -42,7 +42,9 @@ if [ -n "${FILTER_refs}" ]; then
     echo -e "👍 Ref '$REF' matches filter '${FILTER_refs}'."
 fi
 
-if [ -n "${FILTER_files}" ]; then
+if [ -n "${FILTER_files}" ] && [ "$OLDREV" == "FORCE" ]; then
+    echo "⚠️  Forced run, skipping file change filters."
+elif [ -n "${FILTER_files}" ]; then
     FILES_CHANGED=`git diff --name-only $OLDREV $NEWREV | grep "${FILTER_files}" | tr '\n' ' '`
     if [ -z "$FILES_CHANGED" ]; then
         echo "🛑 No changed files match filter '${FILTER_files}'. Exiting pipeline."
@@ -73,6 +75,8 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
     TASK=${!TASK_VAR}
     IMAGE_VAR=${SECTION}_image
     IMAGE=${!IMAGE_VAR}
+    TRIGGER_BUILD_VAR=${SECTION}_pipeline
+    TRIGGER_BUILD=${!TRIGGER_BUILD_VAR}
     ADDITIONAL_REPO_VAR=${SECTION}_repo
     ADDITIONAL_REPO=${!ADDITIONAL_REPO_VAR}
 
@@ -110,6 +114,18 @@ while [ $STEP -le $INI_SECTION_COUNT ]; do
             exit 1
         else
             echo -e "\n--- ✅ Additional repo $ADDITIONAL_REPO cloned successfully ---\n"
+        fi
+    elif [ -n "$TRIGGER_BUILD" ]; then
+        echo -e "\n--- 🔗 Triggering build: $TRIGGER_BUILD ---\n"
+        IFS=":" read -r REPO_PATH PIPELINE_NAME REPO_REF <<< "$TRIGGER_BUILD"
+
+        echo -e "\n  Triggering pipeline: $PIPELINE_FILE ---\n"
+        bash "$WD/run-pipeline.sh" "$PIPELINE_NAME" "$REPO_ROOT/$REPO_PATH" "$REPO_REF" "FORCE" ""
+        if [ $? -ne 0 ]; then
+            echo -e "\n 🚨 Triggered pipeline failed. Terminating pipeline 🚨 \n"
+            exit 1
+        else
+            echo -e "\n--- ✅ Triggered pipeline $PIPELINE_FILE completed successfully ---\n"
         fi
     elif [ -n "$IMAGE" ]; then
         echo -e "\n--- 🐳 Running image: $IMAGE ---\n"
