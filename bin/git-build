@@ -30,7 +30,7 @@ done
 
 # Validate subcommand
 if [ "$SUBCOMMAND" != "logs" ] && [ "$SUBCOMMAND" != "env" ] && [ "$SUBCOMMAND" != "run" ]; then
-  echo "Error: Unknown subcommand. Usage: git-build <logs|env|run> <subcommand> [--repo|-r <path>]" >&2
+  echo "Error: Unknown subcommand. Usage: git-build <logs|env|run> [--repo|-r <path>] [--pipeline|-p <name>] [--force|-f]" >&2
   exit 1
 fi
 

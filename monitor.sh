@@ -20,7 +20,7 @@ while true; do
         [ -d "$event_file" ] && continue
         
         echo "Processing event file: $event_file"
-        IFS=':' read -r FOLDER HEAD OLDREV NEWREV < $event_file
+        IFS=':' read -r FOLDER HEAD OLDREV NEWREV PIPELINE_FILTER < $event_file
         rm -f "$event_file"
 
         REPO="$REPO_ROOT$FOLDER"
@@ -36,11 +36,16 @@ while true; do
 
         bash push-to-remotes.sh "$REPO" "$HEAD" >> "$LOG_FILE" 2>&1
 
-        PIPELINES=`./find-pipelines.sh "$REPO" "$HEAD"`
-        if [ -z "$PIPELINES" ]; then
-            echo "No pipelines found in $REPO. Exiting." >> "$LOG_FILE"
-            rm -f "$event_file"
-            continue
+        if [ -n "$PIPELINE_FILTER" ]; then
+            PIPELINES="$PIPELINE_FILTER"
+            echo "Pipeline specified: $PIPELINE_FILTER" >> "$LOG_FILE"
+        else
+            PIPELINES=`./find-pipelines.sh "$REPO" "$HEAD"`
+            if [ -z "$PIPELINES" ]; then
+                echo "No pipelines found in $REPO. Exiting." >> "$LOG_FILE"
+                rm -f "$event_file"
+                continue
+            fi
         fi
         for pipeline in $PIPELINES; do
             echo -e "\n------------------------------------------\n--- 🏗️ Running pipeline: $pipeline\n------------------------------------------\n" >> "$LOG_FILE"

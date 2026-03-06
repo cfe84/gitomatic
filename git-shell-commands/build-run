@@ -15,6 +15,8 @@ shift
 
 REF_OVERRIDE=""
 WATCH=0
+PIPELINE=""
+FORCE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -26,9 +28,17 @@ while [[ $# -gt 0 ]]; do
       WATCH=1
       shift
       ;;
+    -p|--pipeline)
+      PIPELINE="$2"
+      shift 2
+      ;;
+    -f|--force)
+      FORCE=1
+      shift
+      ;;
     *)
       echo "Error: Unknown argument: $1" >&2
-      echo "Usage: build run [--repo|-r <path>] [--ref <ref>] [--watch|-w]" >&2
+      echo "Usage: build run [--repo|-r <path>] [--ref <ref>] [--watch|-w] [--pipeline|-p <name>] [--force|-f]" >&2
       exit 1
       ;;
   esac
@@ -56,7 +66,17 @@ if [ -z "$NEWREV" ]; then
 fi
 
 # Use an all-zero old revision so filters using diffs still consider the full tree
-OLDREV="0000000000000000000000000000000000000000"
+if [ "$FORCE" -eq 1 ]; then
+  OLDREV="FORCE"
+else
+  OLDREV="0000000000000000000000000000000000000000"
+fi
+
+# Normalize pipeline name: ensure .nmi extension
+if [ -n "$PIPELINE" ]; then
+  PIPELINE="${PIPELINE%.nmi}.nmi"
+  PIPELINE=".build/$PIPELINE"
+fi
 
 # Store the absolute repo path in the event file (matches post-receive hook behavior)
 FOLDER="$REPO"
@@ -65,8 +85,14 @@ mkdir -p "$EVENTS_DIR"
 EVENT_ID="$(date +%s)-$(basename "$REPO")"
 EVENT_FILE="$EVENTS_DIR/$EVENT_ID"
 
-echo "$FOLDER:$REF:$OLDREV:$NEWREV" > "$EVENT_FILE"
+echo "$FOLDER:$REF:$OLDREV:$NEWREV:$PIPELINE" > "$EVENT_FILE"
 echo "Created event $EVENT_ID for $FOLDER @ $REF ($NEWREV)"
+if [ -n "$PIPELINE" ]; then
+  echo "  Pipeline: $PIPELINE"
+fi
+if [ "$FORCE" -eq 1 ]; then
+  echo "  Force: skipping change filters"
+fi
 
 # Path to helpers
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
