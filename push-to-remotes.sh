@@ -11,4 +11,5 @@ git remote -v | grep '(push)' | while read -r line ; do
     
     echo -e "\n===== 🚚 Pushing to remote '$REMOTE_NAME' ($REMOTE_URL) =====\n"
     git push "$REMOTE_NAME" "$HEAD" --force
+    git push "$REMOTE_NAME" --tags --force
 done
