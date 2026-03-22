@@ -34,8 +34,6 @@ while true; do
         LOG_FILE="$LOG_FOLDER/$(basename "$event_file").log"
         echo -e "\n##########################################################################################################################################################\n\nRepo $REPO - Revision $HEAD - `date`" > "$LOG_FILE"
 
-        bash push-to-remotes.sh "$REPO" "$HEAD" >> "$LOG_FILE" 2>&1
-
         if [ -n "$PIPELINE_FILTER" ]; then
             PIPELINES="$PIPELINE_FILTER"
             echo "Pipeline specified: $PIPELINE_FILTER" >> "$LOG_FILE"
@@ -53,5 +51,8 @@ while true; do
 
             echo -e "\n------------------------------------------\n--- 🏗️ End of pipeline: $pipeline\n------------------------------------------\n\n\n\n\n\n" >> "$LOG_FILE"
         done
+
+        bash push-to-remotes.sh "$REPO" "$HEAD" >> "$LOG_FILE" 2>&1
+
     done
 done
