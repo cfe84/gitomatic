@@ -40,9 +40,7 @@ while true; do
         else
             PIPELINES=`./find-pipelines.sh "$REPO" "$HEAD"`
             if [ -z "$PIPELINES" ]; then
-                echo "No pipelines found in $REPO. Exiting." >> "$LOG_FILE"
-                rm -f "$event_file"
-                continue
+                echo "No pipelines found in $REPO." >> "$LOG_FILE"
             fi
         fi
         for pipeline in $PIPELINES; do
