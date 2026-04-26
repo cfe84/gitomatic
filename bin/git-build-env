@@ -2,6 +2,9 @@
 
 function print_usage_and_exit() {
   echo "Usage: git-build env <subcommand> [--repo|-r <path>] [args...]" >&2
+  echo "       git-build env set KEY=VALUE" >&2
+  echo "       git-build env set --file|-f <path>      # load KEY=VALUE lines from a .env file" >&2
+  echo "       git-build env ls" >&2
   exit 1
 }
 
@@ -29,11 +32,82 @@ if [ -z "$SSH_TARGET" ]; then
   exit 1
 fi
 
-REMOTE_CMD="build env"
+# Detect `set --file|-f <path>` and expand it into one server call per line
+SUBCOMMAND=""
+ENV_FILE=""
+PASSTHROUGH_ARGS=()
 
-for arg in "$@"; do
-    REMOTE_CMD="$REMOTE_CMD \"$arg\""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    set|ls|list)
+      SUBCOMMAND="$1"
+      PASSTHROUGH_ARGS+=("$1")
+      shift
+      ;;
+    -f|--file)
+      if [ "$SUBCOMMAND" != "set" ]; then
+        echo "Error: --file|-f is only valid with 'set'" >&2
+        print_usage_and_exit
+      fi
+      ENV_FILE="$2"
+      shift 2
+      ;;
+    *)
+      PASSTHROUGH_ARGS+=("$1")
+      shift
+      ;;
+  esac
 done
 
-ssh "$SSH_TARGET" "$REMOTE_CMD"
+function send_remote() {
+  local remote_cmd="build env"
+  for arg in "$@"; do
+    remote_cmd="$remote_cmd \"$arg\""
+  done
+  # -n: redirect ssh's stdin from /dev/null so it doesn't drain the caller's stdin
+  # (important when send_remote is invoked from inside a `while read` loop)
+  ssh -n "$SSH_TARGET" "$remote_cmd"
+}
+
+if [ -n "$ENV_FILE" ]; then
+  if [ ! -f "$ENV_FILE" ]; then
+    echo "Error: Env file not found: $ENV_FILE" >&2
+    exit 1
+  fi
+
+  EXIT_CODE=0
+  LINE_NO=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    LINE_NO=$((LINE_NO + 1))
+
+    # Strip leading/trailing whitespace
+    trimmed="${line#"${line%%[![:space:]]*}"}"
+    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+
+    # Skip empty lines and comments
+    [ -z "$trimmed" ] && continue
+    [[ "$trimmed" == \#* ]] && continue
+
+    # Strip optional leading "export "
+    if [[ "$trimmed" == export\ * ]]; then
+      trimmed="${trimmed#export }"
+      trimmed="${trimmed#"${trimmed%%[![:space:]]*}"}"
+    fi
+
+    # Validate KEY=VALUE shape locally so we don't ship junk to the server
+    if [[ ! "$trimmed" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+      echo "Skipping line $LINE_NO: not a KEY=VALUE assignment: $line" >&2
+      continue
+    fi
+
+    send_remote "${PASSTHROUGH_ARGS[@]}" "$trimmed"
+    rc=$?
+    if [ $rc -ne 0 ]; then
+      EXIT_CODE=$rc
+    fi
+  done < "$ENV_FILE"
+  exit $EXIT_CODE
+fi
+
+send_remote "${PASSTHROUGH_ARGS[@]}"
 exit $?
