@@ -30,7 +30,6 @@ docker run -d \
     -v /tmp:/tmp \
     -e EVENTS_DIR=/events \
     -e REPO_ROOT=/repos \
-    -e DOCKER_API_VERSION=1.41.0 \
     --name gitomatic \
     --restart unless-stopped \
     gitomatic

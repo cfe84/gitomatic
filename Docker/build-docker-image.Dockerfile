@@ -1,4 +1,4 @@
-FROM docker:cli
+FROM docker:28-cli
 RUN apk add --no-cache \
     bash \
     && rm -rf /var/cache/apk/*
